@@ -51,12 +51,25 @@ python scripts/homeassistant_api.py check-api
 ```bash
 python scripts/homeassistant_api.py list-entities
 ```
+Or list only available entities:
+```bash
+python scripts/homeassistant_api.py list-available-entities
+```
 
 Output format: `entity_id state friendly_name`
 ```
 light.living_room on Living Room Light
 switch.kitchen off Kitchen Switch
 sensor.temperature 23.5 Temperature Sensor
+```
+
+### 查找实体
+```bash
+# Find light-related entities
+python scripts/homeassistant_api.py list-available-entities | grep light
+
+# Find switch-related entities
+python scripts/homeassistant_api.py list-available-entities | grep switch
 ```
 
 ### Get entity state
@@ -101,6 +114,9 @@ python scripts/homeassistant_api.py call-service climate set_temperature --entit
 ```bash
 python scripts/homeassistant_api.py get-config
 ```
+
+## Additional Notes
+- Unavailable entities should not be controlled. Therefore, for operation commands, prefer using the `list-available-entities` command when looking up entities
 
 ## Dependencies
 

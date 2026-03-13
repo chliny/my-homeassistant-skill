@@ -17,7 +17,9 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
+
+
 class HomeAssistantAPI:
     """Home Assistant REST API client"""
 
@@ -230,9 +232,12 @@ class HomeAssistantAPI:
         """
         self._request("DELETE", f"/states/{entity_id}")
 
-    def list_entities(self) -> list[str]:
+    def list_entities(self, available_only: bool = False) -> list[str]:
         """
         List all entities with ID, state and friendly name
+
+        Args:
+            available_only: If True, filter out entities with state "unavailable"
 
         Returns:
             List of strings: "entity_id state friendly_name"
@@ -243,6 +248,11 @@ class HomeAssistantAPI:
         for state in states:
             entity_id = state["entity_id"]
             entity_state = state["state"]
+
+            # Filter unavailable entities if requested
+            if available_only and entity_state == "unavailable":
+                continue
+
             friendly_name = state.get("attributes", {}).get("friendly_name", "")
             friendly_name = friendly_name.strip().replace(" ", "_")
             result.append(f"{entity_id} {entity_state} {friendly_name}")
@@ -526,7 +536,10 @@ def main():
     get_entity_parser.add_argument("entity_id", help="Entity ID")
 
     # List all entities
-    subparsers.add_parser("list-entities", help="List all entity IDs")
+    subparsers.add_parser("list-entities", help="List all entity ID state and friendly name")
+
+    # List available entities
+    subparsers.add_parser("list-available-entities", help="List available entities (exclude unavailable)")
 
     # Get live context
     subparsers.add_parser("live-context", help="Get live context of all entities")
@@ -558,6 +571,11 @@ def main():
 
             elif args.command == "list-entities":
                 entities = ha.list_entities()
+                for entity in entities:
+                    print(entity)
+
+            elif args.command == "list-available-entities":
+                entities = ha.list_entities(available_only=True)
                 for entity in entities:
                     print(entity)
 
