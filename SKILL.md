@@ -63,7 +63,7 @@ switch.kitchen off Kitchen Switch
 sensor.temperature 23.5 Temperature Sensor
 ```
 
-### 查找实体
+### Find Entities
 ```bash
 # Find light-related entities
 python scripts/homeassistant_api.py list-available-entities | grep light
@@ -115,8 +115,12 @@ python scripts/homeassistant_api.py call-service climate set_temperature --entit
 python scripts/homeassistant_api.py get-config
 ```
 
-## Additional Notes
+## Important Notes
 - Unavailable entities should not be controlled. Therefore, for operation commands, prefer using the `list-available-entities` command when looking up entities
+- For turning lights on or off, prioritize operating the light's switch rather than controlling the light directly
+- For light-related commands, **ignore all indicator light entities**
+- If a light's switch is on, consider the light as on; conversely, if the switch is off, the light must be off
+- If a device is offline, **do not assume it is on**
 
 ## Dependencies
 

@@ -9,16 +9,16 @@ HA_URL and HA_TOKEN are retrieved from environment variables.
 import os
 import json
 import ipaddress
-import logging
 import socket
+import urllib3
 from typing import Any
 from urllib.parse import urlparse
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-logging.basicConfig(level=logging.ERROR)
-
+# Disable insecure request warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class HomeAssistantAPI:
     """Home Assistant REST API client"""
@@ -53,7 +53,6 @@ class HomeAssistantAPI:
         # Check if URL points to internal network
         if self._check_internal_url():
             self._unset_proxies()
-        self._unset_proxies()
 
         # Configure session and retry strategy
         self.session: requests.Session = requests.Session()
@@ -243,7 +242,6 @@ class HomeAssistantAPI:
             List of strings: "entity_id state friendly_name"
         """
         states = self.get_states()
-        logging.info(f"States: {states}")
         result = []
         for state in states:
             entity_id = state["entity_id"]
@@ -254,7 +252,8 @@ class HomeAssistantAPI:
                 continue
 
             friendly_name = state.get("attributes", {}).get("friendly_name", "")
-            friendly_name = friendly_name.strip().replace(" ", "_")
+            friendly_name = "_".join(friendly_name.strip().split())
+            entity_state = "_".join(entity_state.strip().split())
             result.append(f"{entity_id} {entity_state} {friendly_name}")
         return result
 
