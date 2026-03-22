@@ -23,7 +23,3 @@ An skill for controlling smart home devices via [Home Assistant](https://www.hom
 # Install dependencies
 pip install -r scripts/requirements.txt
 ```
-
-## License
-
-[MIT](LICENSE)
