@@ -1,0 +1,53 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create zip archive
+        run: |
+          # Create temporary directory for packaging
+          mkdir -p package_temp
+
+          # Copy all files except README.md, README_zh-CN.md and hidden files
+          find . -maxdepth 1 -type f ! -name "README.md" ! -name "README_zh-CN.md" ! -name "LICENSE" ! -name ".*" -exec cp {} package_temp/ \;
+
+          # Copy all directories except .github and hidden directories
+          find . -maxdepth 1 -type d ! -name "." ! -name ".git" ! -name ".github" ! -name package_temp ! -name ".*" -exec cp -r {} package_temp/ \;
+
+          # Create zip archive
+          cd package_temp
+          zip -r ../homeassistant-skill-${{ steps.get_version.outputs.VERSION }}.zip .
+          cd ..
+
+          # Clean up
+          rm -rf package_temp
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+          files: |
+            homeassistant-skill-${{ steps.get_version.outputs.VERSION }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
