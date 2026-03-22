@@ -1,20 +1,12 @@
 ---
 name: homeassistant
-description: Interact with Home Assistant via REST API. Supports getting device states, calling services, listing entities, and querying home status. Use when working with Home Assistant smart home systems, checking device states, or controlling home automation.
+description: Control smart home devices via Home Assistant REST API. Query device states, toggle lights/switches, adjust climate, and manage home automation.
+metadata: {"openclaw": {"emoji":"🏠","requires":{"env":["HA_TOKEN", "HA_URL"], "bins": ["python", "pip"]}}}  
 ---
 
 # Home Assistant Skill
 
 Interact with your Home Assistant instance via the official REST API.
-
-## Configuration
-
-Get environment variables from the following locations. **Note: Load only once, and only `HA_URL` and `HA_TOKEN` are required**
-```
-~/.openclaw/.env
-.env
-~/.env
-```
 
 ### Available Methods
 
