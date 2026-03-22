@@ -1,7 +1,7 @@
 ---
 name: homeassistant
 description: Control smart home devices via Home Assistant REST API. Query device states, toggle lights/switches, adjust climate, and manage home automation.
-metadata: {"openclaw": {"emoji":"🏠","requires":{"env":["HA_TOKEN", "HA_URL"], "bins": ["python", "pip"]}}}  
+metadata: {"openclaw": {"emoji":"🏠","requires":{"env":["HA_TOKEN", "HA_URL"], "bins": ["python"]}}}
 ---
 
 # Home Assistant Skill
