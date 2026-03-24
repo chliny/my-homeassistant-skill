@@ -10,6 +10,7 @@ import os
 import json
 import ipaddress
 import socket
+import sys
 import urllib3
 from typing import Any
 from urllib.parse import urlparse
@@ -20,6 +21,7 @@ from urllib3.util.retry import Retry
 # Disable insecure request warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+
 class HomeAssistantAPI:
     """Home Assistant REST API client"""
 
@@ -28,7 +30,7 @@ class HomeAssistantAPI:
         url: str | None = None,
         token: str | None = None,
         timeout: int = 10,
-        verify_ssl: bool = False
+        verify_ssl: bool = False,
     ):
         """
         Initialize Home Assistant API client
@@ -43,9 +45,13 @@ class HomeAssistantAPI:
         self.token: str = token or os.environ.get("HA_TOKEN", "")
 
         if not self.url:
-            raise ValueError("HA_URL not set, please set environment variable or pass url parameter")
+            raise ValueError(
+                "HA_URL not set, please set environment variable or pass url parameter"
+            )
         if not self.token:
-            raise ValueError("HA_TOKEN not set, please set environment variable or pass token parameter")
+            raise ValueError(
+                "HA_TOKEN not set, please set environment variable or pass token parameter"
+            )
 
         self.timeout: int = timeout
         self.verify_ssl: bool = verify_ssl
@@ -68,7 +74,7 @@ class HomeAssistantAPI:
         # Set default request headers
         self.headers = {
             "Authorization": f"Bearer {self.token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
         self.session.headers.update(self.headers)
 
@@ -114,7 +120,14 @@ class HomeAssistantAPI:
             return False
 
     def _unset_proxies(self) -> dict[str, str] | None:
-        keys = ["http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"]
+        keys = [
+            "http_proxy",
+            "https_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "all_proxy",
+            "ALL_PROXY",
+        ]
         for env_key in keys:
             os.environ.pop(env_key, None)
         return None
@@ -124,7 +137,7 @@ class HomeAssistantAPI:
         method: str,
         endpoint: str,
         data: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None
+        params: dict[str, Any] | None = None,
     ) -> Any:
         """
         Send HTTP request
@@ -198,10 +211,7 @@ class HomeAssistantAPI:
         return self._request("GET", f"/states/{entity_id}")
 
     def set_state(
-        self,
-        entity_id: str,
-        state: str,
-        attributes: dict[str, Any] | None = None
+        self, entity_id: str, state: str, attributes: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Update or create entity state
@@ -270,7 +280,7 @@ class HomeAssistantAPI:
                 "name": state["entity_id"],
                 "domain": state["entity_id"].split(".")[0],
                 "state": state["state"],
-                "attributes": state["attributes"]
+                "attributes": state["attributes"],
             }
             for state in states
         ]
@@ -283,7 +293,7 @@ class HomeAssistantAPI:
         service: str,
         entity_id: str | None = None,
         return_response: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Any:
         """
         Call a service
@@ -310,9 +320,7 @@ class HomeAssistantAPI:
     # ==================== Events ====================
 
     def fire_event(
-        self,
-        event_type: str,
-        event_data: dict[str, Any] | None = None
+        self, event_type: str, event_data: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """
         Fire an event
@@ -335,7 +343,7 @@ class HomeAssistantAPI:
         end_time: str | None = None,
         minimal_response: bool = False,
         no_attributes: bool = False,
-        significant_changes_only: bool = False
+        significant_changes_only: bool = False,
     ) -> list[Any]:
         """
         Get state history
@@ -371,7 +379,7 @@ class HomeAssistantAPI:
         self,
         timestamp: str | None = None,
         entity: str | None = None,
-        end_time: str | None = None
+        end_time: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Get logbook entries
@@ -418,11 +426,7 @@ class HomeAssistantAPI:
 
     # ==================== Camera ====================
 
-    def get_camera_image(
-        self,
-        entity_id: str,
-        timestamp: str | None = None
-    ) -> bytes:
+    def get_camera_image(self, entity_id: str, timestamp: str | None = None) -> bytes:
         """
         Get camera image
 
@@ -452,10 +456,7 @@ class HomeAssistantAPI:
         return self._request("GET", "/calendars")
 
     def get_calendar_events(
-        self,
-        entity_id: str,
-        start: str,
-        end: str
+        self, entity_id: str, start: str, end: str
     ) -> list[dict[str, Any]]:
         """
         Get calendar events
@@ -469,9 +470,7 @@ class HomeAssistantAPI:
             List of events
         """
         return self._request(
-            "GET",
-            f"/calendars/{entity_id}",
-            params={"start": start, "end": end}
+            "GET", f"/calendars/{entity_id}", params={"start": start, "end": end}
         )
 
     # ==================== Error Log ====================
@@ -494,7 +493,9 @@ class HomeAssistantAPI:
 
     # ==================== Intent Handling ====================
 
-    def handle_intent(self, name: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+    def handle_intent(
+        self, name: str, data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Handle intent
 
@@ -523,22 +524,68 @@ class HomeAssistantAPI:
 
 # ==================== Command Line Tool ====================
 
+
 def main():
     """Command line entry point"""
     import argparse
 
+    def parse_json_arg(raw: str | None, flag_name: str) -> dict[str, Any]:
+        if not raw:
+            return {}
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON for {flag_name}: {exc}") from exc
+        if not isinstance(value, dict):
+            raise ValueError(f"{flag_name} must decode to a JSON object")
+        return value
+
+    def print_json(data: Any) -> None:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+
     parser = argparse.ArgumentParser(description="Home Assistant REST API client")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    subparsers.add_parser("check-api", help="Check if API is running")
+    subparsers.add_parser("get-config", help="Get configuration information")
+    subparsers.add_parser("get-components", help="Get loaded components")
+    subparsers.add_parser("get-events", help="Get registered event types")
+    subparsers.add_parser("get-services", help="Get available services")
+    subparsers.add_parser("get-states", help="Get all entity states")
 
     # Get entity state
     get_entity_parser = subparsers.add_parser("get-entity", help="Get entity state")
     get_entity_parser.add_argument("entity_id", help="Entity ID")
 
+    # Set entity state
+    set_state_parser = subparsers.add_parser("set-state", help="Set entity state")
+    set_state_parser.add_argument("entity_id", help="Entity ID")
+    set_state_parser.add_argument("state", help="State value")
+    set_state_parser.add_argument(
+        "--attributes", help="State attributes in JSON format"
+    )
+
+    # Delete entity state
+    delete_entity_parser = subparsers.add_parser(
+        "delete-entity", help="Delete entity state"
+    )
+    delete_entity_parser.add_argument("entity_id", help="Entity ID")
+
     # List all entities
-    subparsers.add_parser("list-entities", help="List all entity ID state and friendly name")
+    list_entities_parser = subparsers.add_parser(
+        "list-entities", help="List all entity ID state and friendly name"
+    )
+    list_entities_parser.add_argument(
+        "--domain", help="Only list entities from this domain"
+    )
 
     # List available entities
-    subparsers.add_parser("list-available-entities", help="List available entities (exclude unavailable)")
+    list_available_parser = subparsers.add_parser(
+        "list-available-entities", help="List available entities (exclude unavailable)"
+    )
+    list_available_parser.add_argument(
+        "--domain", help="Only list entities from this domain"
+    )
 
     # Get live context
     subparsers.add_parser("live-context", help="Get live context of all entities")
@@ -549,12 +596,76 @@ def main():
     call_service_parser.add_argument("service", help="Service name")
     call_service_parser.add_argument("--entity-id", help="Entity ID")
     call_service_parser.add_argument("--data", help="Service data in JSON format")
+    call_service_parser.add_argument(
+        "--return-response", action="store_true", help="Return service response data"
+    )
 
-    # Check API
-    subparsers.add_parser("check-api", help="Check if API is running")
+    # Fire event
+    fire_event_parser = subparsers.add_parser("fire-event", help="Fire an event")
+    fire_event_parser.add_argument("event_type", help="Event type")
+    fire_event_parser.add_argument("--data", help="Event data in JSON format")
 
-    # Get configuration
-    subparsers.add_parser("get-config", help="Get configuration information")
+    # History
+    history_parser = subparsers.add_parser(
+        "get-history", help="Get entity state history"
+    )
+    history_parser.add_argument("entity_ids", nargs="+", help="One or more entity IDs")
+    history_parser.add_argument("--timestamp", help="Start timestamp")
+    history_parser.add_argument("--end-time", help="End timestamp")
+    history_parser.add_argument(
+        "--minimal-response",
+        action="store_true",
+        help="Only return last change and state",
+    )
+    history_parser.add_argument(
+        "--no-attributes", action="store_true", help="Exclude attributes"
+    )
+    history_parser.add_argument(
+        "--significant-changes-only",
+        action="store_true",
+        help="Only return significant changes",
+    )
+
+    # Logbook
+    logbook_parser = subparsers.add_parser("get-logbook", help="Get logbook entries")
+    logbook_parser.add_argument("--timestamp", help="Start timestamp")
+    logbook_parser.add_argument("--entity", help="Filter by entity ID")
+    logbook_parser.add_argument("--end-time", help="End timestamp")
+
+    # Template rendering
+    template_parser = subparsers.add_parser(
+        "render-template", help="Render Home Assistant template"
+    )
+    template_group = template_parser.add_mutually_exclusive_group(required=True)
+    template_group.add_argument("template", nargs="?", help="Inline template string")
+    template_group.add_argument("--file", help="Read template from file")
+
+    # Camera image
+    camera_parser = subparsers.add_parser("get-camera-image", help="Fetch camera image")
+    camera_parser.add_argument("entity_id", help="Camera entity ID")
+    camera_parser.add_argument("--timestamp", help="Image timestamp")
+    camera_parser.add_argument("--output", help="Write image to file instead of stdout")
+
+    # Calendars
+    subparsers.add_parser("get-calendars", help="Get calendar entities")
+
+    calendar_events_parser = subparsers.add_parser(
+        "get-calendar-events", help="Get calendar events"
+    )
+    calendar_events_parser.add_argument("entity_id", help="Calendar entity ID")
+    calendar_events_parser.add_argument("start", help="Start time")
+    calendar_events_parser.add_argument("end", help="End time")
+
+    # System helpers
+    subparsers.add_parser("get-error-log", help="Get Home Assistant error log")
+    subparsers.add_parser("check-config", help="Check Home Assistant configuration")
+
+    # Intent handling
+    intent_parser = subparsers.add_parser(
+        "handle-intent", help="Handle Home Assistant intent"
+    )
+    intent_parser.add_argument("name", help="Intent name")
+    intent_parser.add_argument("--data", help="Intent data in JSON format")
 
     args = parser.parse_args()
 
@@ -564,45 +675,129 @@ def main():
 
     try:
         with HomeAssistantAPI() as ha:
-            if args.command == "get-entity":
+            if args.command == "check-api":
+                print_json(ha.check_api())
+
+            elif args.command == "get-config":
+                print_json(ha.get_config())
+
+            elif args.command == "get-components":
+                print_json(ha.get_components())
+
+            elif args.command == "get-events":
+                print_json(ha.get_events())
+
+            elif args.command == "get-services":
+                print_json(ha.get_services())
+
+            elif args.command == "get-states":
+                print_json(ha.get_states())
+
+            elif args.command == "get-entity":
                 result = ha.get_entity(args.entity_id)
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+                print_json(result)
+
+            elif args.command == "set-state":
+                attributes = parse_json_arg(args.attributes, "--attributes")
+                print_json(
+                    ha.set_state(
+                        args.entity_id, args.state, attributes=attributes or None
+                    )
+                )
+
+            elif args.command == "delete-entity":
+                ha.delete_entity(args.entity_id)
+                print(f"Deleted {args.entity_id}")
 
             elif args.command == "list-entities":
                 entities = ha.list_entities()
                 for entity in entities:
+                    if args.domain and not entity.startswith(f"{args.domain}."):
+                        continue
                     print(entity)
 
             elif args.command == "list-available-entities":
                 entities = ha.list_entities(available_only=True)
                 for entity in entities:
+                    if args.domain and not entity.startswith(f"{args.domain}."):
+                        continue
                     print(entity)
 
             elif args.command == "live-context":
                 context = ha.get_live_context()
-                print(json.dumps(context, indent=2, ensure_ascii=False))
+                print_json(context)
 
             elif args.command == "call-service":
-                data = json.loads(args.data) if args.data else {}
+                data = parse_json_arg(args.data, "--data")
                 result = ha.call_service(
                     args.domain,
                     args.service,
                     entity_id=args.entity_id,
-                    **data
+                    return_response=args.return_response,
+                    **data,
                 )
                 if result:
-                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                    print_json(result)
 
-            elif args.command == "check-api":
-                result = ha.check_api()
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+            elif args.command == "fire-event":
+                data = parse_json_arg(args.data, "--data")
+                print_json(ha.fire_event(args.event_type, data or None))
 
-            elif args.command == "get-config":
-                result = ha.get_config()
-                print(json.dumps(result, indent=2, ensure_ascii=False))
+            elif args.command == "get-history":
+                print_json(
+                    ha.get_history(
+                        args.entity_ids,
+                        timestamp=args.timestamp,
+                        end_time=args.end_time,
+                        minimal_response=args.minimal_response,
+                        no_attributes=args.no_attributes,
+                        significant_changes_only=args.significant_changes_only,
+                    )
+                )
+
+            elif args.command == "get-logbook":
+                print_json(
+                    ha.get_logbook(
+                        timestamp=args.timestamp,
+                        entity=args.entity,
+                        end_time=args.end_time,
+                    )
+                )
+
+            elif args.command == "render-template":
+                template = args.template
+                if args.file:
+                    with open(args.file, "r", encoding="utf-8") as file_handle:
+                        template = file_handle.read()
+                print(ha.render_template(template))
+
+            elif args.command == "get-camera-image":
+                image = ha.get_camera_image(args.entity_id, timestamp=args.timestamp)
+                if args.output:
+                    with open(args.output, "wb") as file_handle:
+                        file_handle.write(image)
+                    print(f"Saved camera image to {args.output}")
+                else:
+                    sys.stdout.buffer.write(image)
+
+            elif args.command == "get-calendars":
+                print_json(ha.get_calendars())
+
+            elif args.command == "get-calendar-events":
+                print_json(ha.get_calendar_events(args.entity_id, args.start, args.end))
+
+            elif args.command == "get-error-log":
+                print(ha.get_error_log())
+
+            elif args.command == "check-config":
+                print_json(ha.check_config())
+
+            elif args.command == "handle-intent":
+                data = parse_json_arg(args.data, "--data")
+                print_json(ha.handle_intent(args.name, data or None))
 
     except Exception as e:
-        print(f"Error: {e}", file=__import__("sys").stderr)
+        print(f"Error: {e}", file=sys.stderr)
         exit(1)
 
 
