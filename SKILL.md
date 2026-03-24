@@ -321,7 +321,7 @@ python scripts/homeassistant_api.py get-error-log
 ## Dependencies
 
 - Python 3.10+
-- `requests` library
+- `aiohttp` library
 
 Install dependencies:
 ```bash
