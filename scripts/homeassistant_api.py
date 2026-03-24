@@ -285,6 +285,22 @@ class HomeAssistantAPI:
             for state in states
         ]
 
+    def get_entities_by_domain(self, domain: str) -> list[dict[str, Any]]:
+        """
+        Get all entities for a specific domain
+
+        Args:
+            domain: Entity domain (e.g. scene, automation, todo)
+
+        Returns:
+            List of entity state objects
+        """
+        return [
+            state
+            for state in self.get_states()
+            if state.get("entity_id", "").startswith(f"{domain}.")
+        ]
+
     # ==================== Service Calls ====================
 
     def call_service(
@@ -316,6 +332,243 @@ class HomeAssistantAPI:
         params = {"return_response": ""} if return_response else None
 
         return self._request("POST", endpoint, data=data, params=params)
+
+    # ==================== Scene Helpers ====================
+
+    def get_scenes(self) -> list[dict[str, Any]]:
+        """Get all scene entities"""
+        return self.get_entities_by_domain("scene")
+
+    def activate_scene(self, entity_id: str, transition: float | None = None) -> Any:
+        """
+        Activate a scene
+
+        Args:
+            entity_id: Scene entity ID
+            transition: Optional transition duration in seconds
+        """
+        data: dict[str, Any] = {}
+        if transition is not None:
+            data["transition"] = transition
+        return self.call_service("scene", "turn_on", entity_id=entity_id, **data)
+
+    def apply_scene(
+        self, entities: dict[str, Any], transition: float | None = None
+    ) -> Any:
+        """
+        Apply an ad-hoc scene definition
+
+        Args:
+            entities: Scene entity definitions keyed by entity_id
+            transition: Optional transition duration in seconds
+        """
+        data: dict[str, Any] = {"entities": entities}
+        if transition is not None:
+            data["transition"] = transition
+        return self.call_service("scene", "apply", **data)
+
+    def create_scene(
+        self,
+        scene_id: str,
+        entities: dict[str, Any] | None = None,
+        snapshot_entities: list[str] | None = None,
+    ) -> Any:
+        """
+        Create a dynamic scene
+
+        Args:
+            scene_id: Scene ID without domain prefix
+            entities: Optional explicit entity state definitions
+            snapshot_entities: Optional entities to snapshot current state from
+        """
+        if not entities and not snapshot_entities:
+            raise ValueError("scene.create requires --entities or --snapshot-entities")
+
+        data: dict[str, Any] = {"scene_id": scene_id}
+        if entities:
+            data["entities"] = entities
+        if snapshot_entities:
+            data["snapshot_entities"] = snapshot_entities
+        return self.call_service("scene", "create", **data)
+
+    def delete_scene(self, entity_id: str) -> Any:
+        """
+        Delete a dynamically created scene
+
+        Args:
+            entity_id: Scene entity ID
+        """
+        return self.call_service("scene", "delete", entity_id=entity_id)
+
+    def reload_scenes(self) -> Any:
+        """Reload scenes"""
+        return self.call_service("scene", "reload")
+
+    # ==================== Automation Helpers ====================
+
+    def get_automations(self) -> list[dict[str, Any]]:
+        """Get all automation entities"""
+        return self.get_entities_by_domain("automation")
+
+    def trigger_automation(
+        self,
+        entity_id: str,
+        skip_condition: bool = False,
+        variables: dict[str, Any] | None = None,
+    ) -> Any:
+        """
+        Trigger an automation manually
+
+        Args:
+            entity_id: Automation entity ID
+            skip_condition: Whether to skip condition checks
+            variables: Optional run variables
+        """
+        data: dict[str, Any] = {}
+        if skip_condition:
+            data["skip_condition"] = True
+        if variables:
+            data["variables"] = variables
+        return self.call_service("automation", "trigger", entity_id=entity_id, **data)
+
+    def turn_on_automation(self, entity_id: str) -> Any:
+        """Enable an automation"""
+        return self.call_service("automation", "turn_on", entity_id=entity_id)
+
+    def turn_off_automation(self, entity_id: str, stop_actions: bool = False) -> Any:
+        """
+        Disable an automation
+
+        Args:
+            entity_id: Automation entity ID
+            stop_actions: Whether to stop currently running actions
+        """
+        data: dict[str, Any] = {}
+        if stop_actions:
+            data["stop_actions"] = True
+        return self.call_service("automation", "turn_off", entity_id=entity_id, **data)
+
+    def toggle_automation(self, entity_id: str) -> Any:
+        """Toggle automation enabled state"""
+        return self.call_service("automation", "toggle", entity_id=entity_id)
+
+    def reload_automations(self) -> Any:
+        """Reload automations"""
+        return self.call_service("automation", "reload")
+
+    # ==================== Todo Helpers ====================
+
+    def get_todo_lists(self) -> list[dict[str, Any]]:
+        """Get all to-do list entities"""
+        return self.get_entities_by_domain("todo")
+
+    def _validate_todo_due_fields(
+        self, due_date: str | None = None, due_datetime: str | None = None
+    ) -> None:
+        if due_date and due_datetime:
+            raise ValueError("Only one of due_date or due_datetime may be provided")
+
+    def get_todo_items(
+        self, entity_id: str, status: str | list[str] | None = None
+    ) -> Any:
+        """
+        Get items from a to-do list
+
+        Args:
+            entity_id: Todo entity ID
+            status: Optional item status filter(s)
+        """
+        data: dict[str, Any] = {}
+        if status is not None:
+            data["status"] = status
+        return self.call_service(
+            "todo",
+            "get_items",
+            entity_id=entity_id,
+            return_response=True,
+            **data,
+        )
+
+    def add_todo_item(
+        self,
+        entity_id: str,
+        item: str,
+        due_date: str | None = None,
+        due_datetime: str | None = None,
+        description: str | None = None,
+    ) -> Any:
+        """
+        Add an item to a to-do list
+
+        Args:
+            entity_id: Todo entity ID
+            item: Item summary
+            due_date: Optional due date
+            due_datetime: Optional due datetime
+            description: Optional description
+        """
+        self._validate_todo_due_fields(due_date, due_datetime)
+        data: dict[str, Any] = {"item": item}
+        if due_date:
+            data["due_date"] = due_date
+        if due_datetime:
+            data["due_datetime"] = due_datetime
+        if description:
+            data["description"] = description
+        return self.call_service("todo", "add_item", entity_id=entity_id, **data)
+
+    def update_todo_item(
+        self,
+        entity_id: str,
+        item: str,
+        rename: str | None = None,
+        status: str | None = None,
+        due_date: str | None = None,
+        due_datetime: str | None = None,
+        description: str | None = None,
+    ) -> Any:
+        """
+        Update a to-do list item
+
+        Args:
+            entity_id: Todo entity ID
+            item: Item summary or UID
+            rename: Optional new summary
+            status: Optional item status
+            due_date: Optional due date
+            due_datetime: Optional due datetime
+            description: Optional description
+        """
+        self._validate_todo_due_fields(due_date, due_datetime)
+        if not any([rename, status, due_date, due_datetime, description]):
+            raise ValueError("todo.update_item requires at least one field to update")
+
+        data: dict[str, Any] = {"item": item}
+        if rename:
+            data["rename"] = rename
+        if status:
+            data["status"] = status
+        if due_date:
+            data["due_date"] = due_date
+        if due_datetime:
+            data["due_datetime"] = due_datetime
+        if description:
+            data["description"] = description
+        return self.call_service("todo", "update_item", entity_id=entity_id, **data)
+
+    def remove_todo_item(self, entity_id: str, item: str) -> Any:
+        """
+        Remove a to-do list item
+
+        Args:
+            entity_id: Todo entity ID
+            item: Item summary or UID
+        """
+        return self.call_service("todo", "remove_item", entity_id=entity_id, item=item)
+
+    def remove_completed_todo_items(self, entity_id: str) -> Any:
+        """Remove all completed items from a to-do list"""
+        return self.call_service("todo", "remove_completed_items", entity_id=entity_id)
 
     # ==================== Events ====================
 
@@ -552,6 +805,9 @@ def main():
     subparsers.add_parser("get-events", help="Get registered event types")
     subparsers.add_parser("get-services", help="Get available services")
     subparsers.add_parser("get-states", help="Get all entity states")
+    subparsers.add_parser("get-scenes", help="Get scene entities")
+    subparsers.add_parser("get-automations", help="Get automation entities")
+    subparsers.add_parser("get-todo-lists", help="Get to-do list entities")
 
     # Get entity state
     get_entity_parser = subparsers.add_parser("get-entity", help="Get entity state")
@@ -589,6 +845,121 @@ def main():
 
     # Get live context
     subparsers.add_parser("live-context", help="Get live context of all entities")
+
+    # Scene helpers
+    activate_scene_parser = subparsers.add_parser(
+        "activate-scene", help="Activate a scene"
+    )
+    activate_scene_parser.add_argument("entity_id", help="Scene entity ID")
+    activate_scene_parser.add_argument(
+        "--transition", type=float, help="Transition duration in seconds"
+    )
+
+    apply_scene_parser = subparsers.add_parser(
+        "apply-scene", help="Apply a scene definition directly"
+    )
+    apply_scene_parser.add_argument(
+        "--entities", required=True, help="Scene entities in JSON format"
+    )
+    apply_scene_parser.add_argument(
+        "--transition", type=float, help="Transition duration in seconds"
+    )
+
+    create_scene_parser = subparsers.add_parser(
+        "create-scene", help="Create a dynamic scene"
+    )
+    create_scene_parser.add_argument("scene_id", help="Scene ID without domain")
+    create_scene_parser.add_argument("--entities", help="Scene entities in JSON format")
+    create_scene_parser.add_argument(
+        "--snapshot-entities",
+        nargs="+",
+        help="Entity IDs to snapshot into the scene",
+    )
+
+    delete_scene_parser = subparsers.add_parser(
+        "delete-scene", help="Delete a dynamic scene"
+    )
+    delete_scene_parser.add_argument("entity_id", help="Scene entity ID")
+    subparsers.add_parser("reload-scenes", help="Reload scene configuration")
+
+    # Automation helpers
+    trigger_automation_parser = subparsers.add_parser(
+        "trigger-automation", help="Trigger an automation"
+    )
+    trigger_automation_parser.add_argument("entity_id", help="Automation entity ID")
+    trigger_automation_parser.add_argument(
+        "--skip-condition",
+        action="store_true",
+        help="Skip automation condition checks",
+    )
+    trigger_automation_parser.add_argument(
+        "--variables", help="Automation variables in JSON format"
+    )
+
+    automation_entity_parser = subparsers.add_parser(
+        "turn-on-automation", help="Enable an automation"
+    )
+    automation_entity_parser.add_argument("entity_id", help="Automation entity ID")
+
+    turn_off_automation_parser = subparsers.add_parser(
+        "turn-off-automation", help="Disable an automation"
+    )
+    turn_off_automation_parser.add_argument("entity_id", help="Automation entity ID")
+    turn_off_automation_parser.add_argument(
+        "--stop-actions",
+        action="store_true",
+        help="Stop currently running actions",
+    )
+
+    toggle_automation_parser = subparsers.add_parser(
+        "toggle-automation", help="Toggle automation enabled state"
+    )
+    toggle_automation_parser.add_argument("entity_id", help="Automation entity ID")
+    subparsers.add_parser("reload-automations", help="Reload automation configuration")
+
+    # Todo helpers
+    get_todo_items_parser = subparsers.add_parser(
+        "get-todo-items", help="Get to-do list items"
+    )
+    get_todo_items_parser.add_argument("entity_id", help="Todo entity ID")
+    get_todo_items_parser.add_argument(
+        "--status",
+        nargs="+",
+        help="Optional item status filter(s), e.g. needs_action completed",
+    )
+
+    add_todo_item_parser = subparsers.add_parser(
+        "add-todo-item", help="Add an item to a to-do list"
+    )
+    add_todo_item_parser.add_argument("entity_id", help="Todo entity ID")
+    add_todo_item_parser.add_argument("item", help="Item summary")
+    add_todo_item_parser.add_argument("--due-date", help="Due date (YYYY-MM-DD)")
+    add_todo_item_parser.add_argument("--due-datetime", help="Due datetime")
+    add_todo_item_parser.add_argument("--description", help="Item description")
+
+    update_todo_item_parser = subparsers.add_parser(
+        "update-todo-item", help="Update a to-do list item"
+    )
+    update_todo_item_parser.add_argument("entity_id", help="Todo entity ID")
+    update_todo_item_parser.add_argument("item", help="Item summary or UID")
+    update_todo_item_parser.add_argument("--rename", help="Rename the item")
+    update_todo_item_parser.add_argument(
+        "--status", choices=["needs_action", "completed"], help="New item status"
+    )
+    update_todo_item_parser.add_argument("--due-date", help="Due date (YYYY-MM-DD)")
+    update_todo_item_parser.add_argument("--due-datetime", help="Due datetime")
+    update_todo_item_parser.add_argument("--description", help="Item description")
+
+    remove_todo_item_parser = subparsers.add_parser(
+        "remove-todo-item", help="Remove a to-do list item"
+    )
+    remove_todo_item_parser.add_argument("entity_id", help="Todo entity ID")
+    remove_todo_item_parser.add_argument("item", help="Item summary or UID")
+
+    clear_completed_todo_parser = subparsers.add_parser(
+        "clear-completed-todo", help="Remove completed items from a to-do list"
+    )
+    clear_completed_todo_parser.add_argument("entity_id", help="Todo entity ID")
 
     # Call service
     call_service_parser = subparsers.add_parser("call-service", help="Call service")
@@ -693,6 +1064,15 @@ def main():
             elif args.command == "get-states":
                 print_json(ha.get_states())
 
+            elif args.command == "get-scenes":
+                print_json(ha.get_scenes())
+
+            elif args.command == "get-automations":
+                print_json(ha.get_automations())
+
+            elif args.command == "get-todo-lists":
+                print_json(ha.get_todo_lists())
+
             elif args.command == "get-entity":
                 result = ha.get_entity(args.entity_id)
                 print_json(result)
@@ -726,6 +1106,109 @@ def main():
             elif args.command == "live-context":
                 context = ha.get_live_context()
                 print_json(context)
+
+            elif args.command == "activate-scene":
+                result = ha.activate_scene(args.entity_id, transition=args.transition)
+                if result:
+                    print_json(result)
+
+            elif args.command == "apply-scene":
+                entities = parse_json_arg(args.entities, "--entities")
+                result = ha.apply_scene(entities, transition=args.transition)
+                if result:
+                    print_json(result)
+
+            elif args.command == "create-scene":
+                entities = parse_json_arg(args.entities, "--entities")
+                result = ha.create_scene(
+                    args.scene_id,
+                    entities=entities or None,
+                    snapshot_entities=args.snapshot_entities,
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "delete-scene":
+                result = ha.delete_scene(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "reload-scenes":
+                result = ha.reload_scenes()
+                if result:
+                    print_json(result)
+
+            elif args.command == "trigger-automation":
+                variables = parse_json_arg(args.variables, "--variables")
+                result = ha.trigger_automation(
+                    args.entity_id,
+                    skip_condition=args.skip_condition,
+                    variables=variables or None,
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "turn-on-automation":
+                result = ha.turn_on_automation(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "turn-off-automation":
+                result = ha.turn_off_automation(
+                    args.entity_id, stop_actions=args.stop_actions
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "toggle-automation":
+                result = ha.toggle_automation(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "reload-automations":
+                result = ha.reload_automations()
+                if result:
+                    print_json(result)
+
+            elif args.command == "get-todo-items":
+                statuses: str | list[str] | None = args.status
+                if statuses and len(statuses) == 1:
+                    statuses = statuses[0]
+                print_json(ha.get_todo_items(args.entity_id, status=statuses))
+
+            elif args.command == "add-todo-item":
+                result = ha.add_todo_item(
+                    args.entity_id,
+                    args.item,
+                    due_date=args.due_date,
+                    due_datetime=args.due_datetime,
+                    description=args.description,
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "update-todo-item":
+                result = ha.update_todo_item(
+                    args.entity_id,
+                    args.item,
+                    rename=args.rename,
+                    status=args.status,
+                    due_date=args.due_date,
+                    due_datetime=args.due_datetime,
+                    description=args.description,
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "remove-todo-item":
+                result = ha.remove_todo_item(args.entity_id, args.item)
+                if result:
+                    print_json(result)
+
+            elif args.command == "clear-completed-todo":
+                result = ha.remove_completed_todo_items(args.entity_id)
+                if result:
+                    print_json(result)
 
             elif args.command == "call-service":
                 data = parse_json_arg(args.data, "--data")

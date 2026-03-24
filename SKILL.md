@@ -18,6 +18,24 @@ Interact with your Home Assistant instance via the official REST API.
 | `get_components()` | Get loaded Home Assistant components |
 | `get_events()` | Get registered event types |
 | `get_services()` | Get available services |
+| `get_scenes()` | Get scene entities |
+| `activate_scene(entity_id, transition)` | Activate a scene |
+| `apply_scene(entities, transition)` | Apply an ad-hoc scene definition |
+| `create_scene(scene_id, entities, snapshot_entities)` | Create a dynamic scene |
+| `delete_scene(entity_id)` | Delete a dynamic scene |
+| `reload_scenes()` | Reload scenes |
+| `get_automations()` | Get automation entities |
+| `trigger_automation(entity_id, skip_condition, variables)` | Trigger an automation |
+| `turn_on_automation(entity_id)` | Enable an automation |
+| `turn_off_automation(entity_id, stop_actions)` | Disable an automation |
+| `toggle_automation(entity_id)` | Toggle automation state |
+| `reload_automations()` | Reload automations |
+| `get_todo_lists()` | Get to-do list entities |
+| `get_todo_items(entity_id, status)` | Get to-do items |
+| `add_todo_item(entity_id, item, ...)` | Add a to-do item |
+| `update_todo_item(entity_id, item, ...)` | Update a to-do item |
+| `remove_todo_item(entity_id, item)` | Remove a to-do item |
+| `remove_completed_todo_items(entity_id)` | Remove completed to-do items |
 | `get_entity(entity_id)` | Get specific entity state |
 | `set_state(entity_id, state, attributes)` | Update entity state |
 | `list_entities()` | List all entities with ID, state and friendly name |
@@ -104,6 +122,59 @@ python scripts/homeassistant_api.py set-state sensor.demo online --attributes '{
 ### Get live context (all entities overview)
 ```bash
 python scripts/homeassistant_api.py live-context
+```
+
+### Work with scenes
+```bash
+# List scenes
+python scripts/homeassistant_api.py get-scenes
+
+# Activate a scene
+python scripts/homeassistant_api.py activate-scene scene.movie_time --transition 2.5
+
+# Apply a temporary scene definition
+python scripts/homeassistant_api.py apply-scene --entities '{"light.living_room": {"state": "on", "brightness": 120}, "media_player.tv": "off"}'
+
+# Create a dynamic scene from current entity state
+python scripts/homeassistant_api.py create-scene before_window_open --snapshot-entities climate.ecobee light.ceiling_lights
+
+# Delete a dynamic scene
+python scripts/homeassistant_api.py delete-scene scene.before_window_open
+```
+
+### Work with automations
+```bash
+# List automations
+python scripts/homeassistant_api.py get-automations
+
+# Trigger an automation with variables
+python scripts/homeassistant_api.py trigger-automation automation.good_night --variables '{"source": "cli"}'
+
+# Disable an automation and stop active actions
+python scripts/homeassistant_api.py turn-off-automation automation.good_night --stop-actions
+
+# Re-enable or toggle an automation
+python scripts/homeassistant_api.py turn-on-automation automation.good_night
+python scripts/homeassistant_api.py toggle-automation automation.good_night
+```
+
+### Work with to-do lists
+```bash
+# List to-do lists
+python scripts/homeassistant_api.py get-todo-lists
+
+# Fetch incomplete items
+python scripts/homeassistant_api.py get-todo-items todo.personal_tasks --status needs_action
+
+# Add an item
+python scripts/homeassistant_api.py add-todo-item todo.personal_tasks "Submit tax return" --due-date 2026-04-10 --description "Collect documents first"
+
+# Mark an item completed
+python scripts/homeassistant_api.py update-todo-item todo.personal_tasks "Submit tax return" --status completed
+
+# Remove one item or clear completed ones
+python scripts/homeassistant_api.py remove-todo-item todo.personal_tasks "Submit tax return"
+python scripts/homeassistant_api.py clear-completed-todo todo.personal_tasks
 ```
 
 ### Call services
