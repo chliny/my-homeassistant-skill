@@ -20,7 +20,6 @@ Interact with your Home Assistant instance via the official REST API.
 | `get_services()` | Get available services |
 | `get_entity(entity_id)` | Get specific entity state |
 | `set_state(entity_id, state, attributes)` | Update entity state |
-| `delete_entity(entity_id)` | Delete entity state |
 | `list_entities()` | List all entities with ID, state and friendly name |
 | `get_live_context()` | Get formatted entity overview |
 | `call_service(domain, service, entity_id, **kwargs)` | Call a service |
@@ -66,6 +65,9 @@ python scripts/homeassistant_api.py list-available-entities | grep light
 
 # Find switch-related entities
 python scripts/homeassistant_api.py list-available-entities | grep switch
+
+# Show only light entities
+python scripts/homeassistant_api.py list-available-entities --domain light
 ```
 
 ### Get entity state
@@ -82,8 +84,6 @@ python scripts/homeassistant_api.py get-entity person.chliny
 # Dump all entity states as JSON
 python scripts/homeassistant_api.py get-states
 
-# Show only light entities
-python scripts/homeassistant_api.py list-entities --domain light
 
 # Inspect loaded integrations/components
 python scripts/homeassistant_api.py get-components
@@ -99,9 +99,6 @@ python scripts/homeassistant_api.py get-services
 ```bash
 # Set a synthetic state in Home Assistant
 python scripts/homeassistant_api.py set-state sensor.demo online --attributes '{"friendly_name": "Demo Sensor"}'
-
-# Delete that synthetic state
-python scripts/homeassistant_api.py delete-entity sensor.demo
 ```
 
 ### Get live context (all entities overview)
