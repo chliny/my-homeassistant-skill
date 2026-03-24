@@ -9,7 +9,7 @@ An skill for controlling smart home devices via [Home Assistant](https://www.hom
 - **List & filter** entities by type or availability
 - **Call** any Home Assistant service and fire custom events
 - **View** history, logbook, components, services, calendars, and error logs
-- **Use** templates, camera snapshots, synthetic state helpers, scenes, automations, to-do lists, and intent handling
+- **Use** templates, camera snapshots, synthetic state helpers, scenes, automations, to-do lists, scripts, helpers, and intent handling
 
 ## Environment Variables
 

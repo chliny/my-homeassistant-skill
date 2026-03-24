@@ -462,6 +462,129 @@ class HomeAssistantAPI:
         """Get all to-do list entities"""
         return self.get_entities_by_domain("todo")
 
+    def get_scripts(self) -> list[dict[str, Any]]:
+        """Get all script entities"""
+        return self.get_entities_by_domain("script")
+
+    def get_input_booleans(self) -> list[dict[str, Any]]:
+        """Get all input_boolean entities"""
+        return self.get_entities_by_domain("input_boolean")
+
+    def get_input_selects(self) -> list[dict[str, Any]]:
+        """Get all input_select entities"""
+        return self.get_entities_by_domain("input_select")
+
+    # ==================== Script Helpers ====================
+
+    def run_script(
+        self,
+        entity_id: str,
+        variables: dict[str, Any] | None = None,
+        return_response: bool = False,
+    ) -> Any:
+        """
+        Run a script entity
+
+        Args:
+            entity_id: Script entity ID
+            variables: Optional script variables
+            return_response: Whether to request service response data
+        """
+        data: dict[str, Any] = {}
+        if variables:
+            data.update(variables)
+        return self.call_service(
+            "script",
+            "turn_on",
+            entity_id=entity_id,
+            return_response=return_response,
+            **data,
+        )
+
+    def turn_off_script(self, entity_id: str) -> Any:
+        """Turn off a running script"""
+        return self.call_service("script", "turn_off", entity_id=entity_id)
+
+    def toggle_script(self, entity_id: str) -> Any:
+        """Toggle a script entity"""
+        return self.call_service("script", "toggle", entity_id=entity_id)
+
+    def reload_scripts(self) -> Any:
+        """Reload script configuration"""
+        return self.call_service("script", "reload")
+
+    # ==================== Input Boolean Helpers ====================
+
+    def turn_on_input_boolean(self, entity_id: str) -> Any:
+        """Turn on an input_boolean"""
+        return self.call_service("input_boolean", "turn_on", entity_id=entity_id)
+
+    def turn_off_input_boolean(self, entity_id: str) -> Any:
+        """Turn off an input_boolean"""
+        return self.call_service("input_boolean", "turn_off", entity_id=entity_id)
+
+    def toggle_input_boolean(self, entity_id: str) -> Any:
+        """Toggle an input_boolean"""
+        return self.call_service("input_boolean", "toggle", entity_id=entity_id)
+
+    def reload_input_booleans(self) -> Any:
+        """Reload input_boolean configuration"""
+        return self.call_service("input_boolean", "reload")
+
+    # ==================== Input Select Helpers ====================
+
+    def select_input_option(self, entity_id: str, option: str) -> Any:
+        """
+        Select an input_select option
+
+        Args:
+            entity_id: Input select entity ID
+            option: Option value to select
+        """
+        return self.call_service(
+            "input_select", "select_option", entity_id=entity_id, option=option
+        )
+
+    def select_next_input_option(self, entity_id: str, cycle: bool = True) -> Any:
+        """
+        Select the next input_select option
+
+        Args:
+            entity_id: Input select entity ID
+            cycle: Whether to wrap to the start at the end
+        """
+        return self.call_service(
+            "input_select", "select_next", entity_id=entity_id, cycle=cycle
+        )
+
+    def select_previous_input_option(self, entity_id: str, cycle: bool = True) -> Any:
+        """
+        Select the previous input_select option
+
+        Args:
+            entity_id: Input select entity ID
+            cycle: Whether to wrap to the end at the start
+        """
+        return self.call_service(
+            "input_select", "select_previous", entity_id=entity_id, cycle=cycle
+        )
+
+    def set_input_select_options(self, entity_id: str, options: list[str]) -> Any:
+        """
+        Replace input_select options
+
+        Args:
+            entity_id: Input select entity ID
+            options: New list of options
+        """
+        return self.call_service(
+            "input_select", "set_options", entity_id=entity_id, options=options
+        )
+
+    def reload_input_selects(self) -> Any:
+        """Reload input_select configuration"""
+        return self.call_service("input_select", "reload")
+
     def _validate_todo_due_fields(
         self, due_date: str | None = None, due_datetime: str | None = None
     ) -> None:
@@ -808,6 +931,9 @@ def main():
     subparsers.add_parser("get-scenes", help="Get scene entities")
     subparsers.add_parser("get-automations", help="Get automation entities")
     subparsers.add_parser("get-todo-lists", help="Get to-do list entities")
+    subparsers.add_parser("get-scripts", help="Get script entities")
+    subparsers.add_parser("get-input-booleans", help="Get input_boolean entities")
+    subparsers.add_parser("get-input-selects", help="Get input_select entities")
 
     # Get entity state
     get_entity_parser = subparsers.add_parser("get-entity", help="Get entity state")
@@ -961,6 +1087,98 @@ def main():
     )
     clear_completed_todo_parser.add_argument("entity_id", help="Todo entity ID")
 
+    # Script helpers
+    run_script_parser = subparsers.add_parser("run-script", help="Run a script entity")
+    run_script_parser.add_argument("entity_id", help="Script entity ID")
+    run_script_parser.add_argument(
+        "--variables", help="Script variables in JSON format"
+    )
+    run_script_parser.add_argument(
+        "--return-response", action="store_true", help="Return service response data"
+    )
+
+    turn_off_script_parser = subparsers.add_parser(
+        "turn-off-script", help="Turn off a running script"
+    )
+    turn_off_script_parser.add_argument("entity_id", help="Script entity ID")
+
+    toggle_script_parser = subparsers.add_parser(
+        "toggle-script", help="Toggle a script entity"
+    )
+    toggle_script_parser.add_argument("entity_id", help="Script entity ID")
+    subparsers.add_parser("reload-scripts", help="Reload script configuration")
+
+    # Input boolean helpers
+    turn_on_input_boolean_parser = subparsers.add_parser(
+        "turn-on-input-boolean", help="Turn on an input_boolean"
+    )
+    turn_on_input_boolean_parser.add_argument(
+        "entity_id", help="Input boolean entity ID"
+    )
+
+    turn_off_input_boolean_parser = subparsers.add_parser(
+        "turn-off-input-boolean", help="Turn off an input_boolean"
+    )
+    turn_off_input_boolean_parser.add_argument(
+        "entity_id", help="Input boolean entity ID"
+    )
+
+    toggle_input_boolean_parser = subparsers.add_parser(
+        "toggle-input-boolean", help="Toggle an input_boolean"
+    )
+    toggle_input_boolean_parser.add_argument(
+        "entity_id", help="Input boolean entity ID"
+    )
+    subparsers.add_parser(
+        "reload-input-booleans", help="Reload input_boolean configuration"
+    )
+
+    # Input select helpers
+    select_input_option_parser = subparsers.add_parser(
+        "select-input-option", help="Select an input_select option"
+    )
+    select_input_option_parser.add_argument("entity_id", help="Input select entity ID")
+    select_input_option_parser.add_argument("option", help="Option to select")
+
+    select_next_input_option_parser = subparsers.add_parser(
+        "select-next-input-option", help="Select next input_select option"
+    )
+    select_next_input_option_parser.add_argument(
+        "entity_id", help="Input select entity ID"
+    )
+    select_next_input_option_parser.add_argument(
+        "--no-cycle",
+        action="store_true",
+        help="Do not wrap around when reaching the end",
+    )
+
+    select_previous_input_option_parser = subparsers.add_parser(
+        "select-previous-input-option", help="Select previous input_select option"
+    )
+    select_previous_input_option_parser.add_argument(
+        "entity_id", help="Input select entity ID"
+    )
+    select_previous_input_option_parser.add_argument(
+        "--no-cycle",
+        action="store_true",
+        help="Do not wrap around when reaching the start",
+    )
+
+    set_input_select_options_parser = subparsers.add_parser(
+        "set-input-select-options", help="Replace input_select options"
+    )
+    set_input_select_options_parser.add_argument(
+        "entity_id", help="Input select entity ID"
+    )
+    set_input_select_options_parser.add_argument(
+        "options",
+        nargs="+",
+        help="New option values",
+    )
+    subparsers.add_parser(
+        "reload-input-selects", help="Reload input_select configuration"
+    )
+
     # Call service
     call_service_parser = subparsers.add_parser("call-service", help="Call service")
     call_service_parser.add_argument("domain", help="Service domain")
@@ -1072,6 +1290,15 @@ def main():
 
             elif args.command == "get-todo-lists":
                 print_json(ha.get_todo_lists())
+
+            elif args.command == "get-scripts":
+                print_json(ha.get_scripts())
+
+            elif args.command == "get-input-booleans":
+                print_json(ha.get_input_booleans())
+
+            elif args.command == "get-input-selects":
+                print_json(ha.get_input_selects())
 
             elif args.command == "get-entity":
                 result = ha.get_entity(args.entity_id)
@@ -1207,6 +1434,80 @@ def main():
 
             elif args.command == "clear-completed-todo":
                 result = ha.remove_completed_todo_items(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "run-script":
+                variables = parse_json_arg(args.variables, "--variables")
+                result = ha.run_script(
+                    args.entity_id,
+                    variables=variables or None,
+                    return_response=args.return_response,
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "turn-off-script":
+                result = ha.turn_off_script(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "toggle-script":
+                result = ha.toggle_script(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "reload-scripts":
+                result = ha.reload_scripts()
+                if result:
+                    print_json(result)
+
+            elif args.command == "turn-on-input-boolean":
+                result = ha.turn_on_input_boolean(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "turn-off-input-boolean":
+                result = ha.turn_off_input_boolean(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "toggle-input-boolean":
+                result = ha.toggle_input_boolean(args.entity_id)
+                if result:
+                    print_json(result)
+
+            elif args.command == "reload-input-booleans":
+                result = ha.reload_input_booleans()
+                if result:
+                    print_json(result)
+
+            elif args.command == "select-input-option":
+                result = ha.select_input_option(args.entity_id, args.option)
+                if result:
+                    print_json(result)
+
+            elif args.command == "select-next-input-option":
+                result = ha.select_next_input_option(
+                    args.entity_id, cycle=not args.no_cycle
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "select-previous-input-option":
+                result = ha.select_previous_input_option(
+                    args.entity_id, cycle=not args.no_cycle
+                )
+                if result:
+                    print_json(result)
+
+            elif args.command == "set-input-select-options":
+                result = ha.set_input_select_options(args.entity_id, args.options)
+                if result:
+                    print_json(result)
+
+            elif args.command == "reload-input-selects":
+                result = ha.reload_input_selects()
                 if result:
                     print_json(result)
 

@@ -22,7 +22,6 @@ Interact with your Home Assistant instance via the official REST API.
 | `activate_scene(entity_id, transition)` | Activate a scene |
 | `apply_scene(entities, transition)` | Apply an ad-hoc scene definition |
 | `create_scene(scene_id, entities, snapshot_entities)` | Create a dynamic scene |
-| `delete_scene(entity_id)` | Delete a dynamic scene |
 | `reload_scenes()` | Reload scenes |
 | `get_automations()` | Get automation entities |
 | `trigger_automation(entity_id, skip_condition, variables)` | Trigger an automation |
@@ -36,6 +35,22 @@ Interact with your Home Assistant instance via the official REST API.
 | `update_todo_item(entity_id, item, ...)` | Update a to-do item |
 | `remove_todo_item(entity_id, item)` | Remove a to-do item |
 | `remove_completed_todo_items(entity_id)` | Remove completed to-do items |
+| `get_scripts()` | Get script entities |
+| `run_script(entity_id, variables, return_response)` | Run a script |
+| `turn_off_script(entity_id)` | Stop a running script |
+| `toggle_script(entity_id)` | Toggle a script |
+| `reload_scripts()` | Reload scripts |
+| `get_input_booleans()` | Get input_boolean entities |
+| `turn_on_input_boolean(entity_id)` | Turn on an input_boolean |
+| `turn_off_input_boolean(entity_id)` | Turn off an input_boolean |
+| `toggle_input_boolean(entity_id)` | Toggle an input_boolean |
+| `reload_input_booleans()` | Reload input_booleans |
+| `get_input_selects()` | Get input_select entities |
+| `select_input_option(entity_id, option)` | Select an input_select option |
+| `select_next_input_option(entity_id, cycle)` | Select next input_select option |
+| `select_previous_input_option(entity_id, cycle)` | Select previous input_select option |
+| `set_input_select_options(entity_id, options)` | Replace input_select options |
+| `reload_input_selects()` | Reload input_selects |
 | `get_entity(entity_id)` | Get specific entity state |
 | `set_state(entity_id, state, attributes)` | Update entity state |
 | `list_entities()` | List all entities with ID, state and friendly name |
@@ -137,9 +152,6 @@ python scripts/homeassistant_api.py apply-scene --entities '{"light.living_room"
 
 # Create a dynamic scene from current entity state
 python scripts/homeassistant_api.py create-scene before_window_open --snapshot-entities climate.ecobee light.ceiling_lights
-
-# Delete a dynamic scene
-python scripts/homeassistant_api.py delete-scene scene.before_window_open
 ```
 
 ### Work with automations
@@ -175,6 +187,46 @@ python scripts/homeassistant_api.py update-todo-item todo.personal_tasks "Submit
 # Remove one item or clear completed ones
 python scripts/homeassistant_api.py remove-todo-item todo.personal_tasks "Submit tax return"
 python scripts/homeassistant_api.py clear-completed-todo todo.personal_tasks
+```
+
+### Work with scripts
+```bash
+# List scripts
+python scripts/homeassistant_api.py get-scripts
+
+# Run a script with variables
+python scripts/homeassistant_api.py run-script script.good_morning --variables '{"room": "kitchen"}'
+
+# Stop or toggle a script
+python scripts/homeassistant_api.py turn-off-script script.good_morning
+python scripts/homeassistant_api.py toggle-script script.good_morning
+```
+
+### Work with input booleans
+```bash
+# List input booleans
+python scripts/homeassistant_api.py get-input-booleans
+
+# Turn one on, off, or toggle it
+python scripts/homeassistant_api.py turn-on-input-boolean input_boolean.guest_mode
+python scripts/homeassistant_api.py turn-off-input-boolean input_boolean.guest_mode
+python scripts/homeassistant_api.py toggle-input-boolean input_boolean.guest_mode
+```
+
+### Work with input selects
+```bash
+# List input selects
+python scripts/homeassistant_api.py get-input-selects
+
+# Select a specific option
+python scripts/homeassistant_api.py select-input-option input_select.house_mode Away
+
+# Step through options
+python scripts/homeassistant_api.py select-next-input-option input_select.house_mode
+python scripts/homeassistant_api.py select-previous-input-option input_select.house_mode --no-cycle
+
+# Replace the available options
+python scripts/homeassistant_api.py set-input-select-options input_select.house_mode Home Away Night Vacation
 ```
 
 ### Call services
